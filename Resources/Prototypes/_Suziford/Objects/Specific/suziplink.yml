@@ -1,0 +1,51 @@
+- type: entity
+  parent: [BaseItem, StorePresetSuziPlink]
+  id: BaseSuziPlinkPhone
+  suffix: Empty
+  name: СузиПлинк
+  description: Модный приговор, нашумевший магазин сети станций "Suzi Statiton".
+  components:
+  - type: Sprite
+    sprite: _Suziford/Objects/Specific/suziplink.rsi
+    layers:
+    - state: suziplink
+  - type: Item
+    size: Normal
+    sprite: _Suziford/Objects/Specific/suziplink.rsi
+    heldPrefix: suziplink
+  - type: UserInterface
+    interfaces:
+      enum.StoreUiKey.Key:
+        type: StoreBoundUserInterface
+  - type: ActivatableUI
+    key: enum.StoreUiKey.Key
+  - type: Store
+    balance:
+      SuziCartridge: 0
+
+- type: entity
+  parent: BaseSuziPlinkPhone
+  id: BaseSuziPlinkPhone100NS
+  suffix: 100 НС
+  components:
+  - type: Store
+    balance:
+      SuziCartridge: 100
+
+- type: entity
+  parent: BaseSuziPlinkPhone
+  id: BaseSuziPlinkPhone150NS
+  suffix: 150 НС
+  components:
+  - type: Store
+    balance:
+      SuziCartridge: 150
+
+- type: entity
+  parent: BaseSuziPlinkPhone
+  id: BaseSuziPlinkPhone200NS
+  suffix: 200 НС
+  components:
+  - type: Store
+    balance:
+      SuziCartridge: 200

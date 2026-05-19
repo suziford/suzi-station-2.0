@@ -53,12 +53,15 @@ using Robust.Client.Graphics;
 using Robust.Client.Input;
 using Robust.Client.Player;
 using Robust.Client.State;
+using Content.Client._Suziford.Camera; //suzi-station
 using Robust.Shared.Animations;
 using Robust.Shared.Input;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Utility;
+using Robust.Shared.Maths;
+using System; // Для MathF
 using SharedGunSystem = Content.Shared.Weapons.Ranged.Systems.SharedGunSystem;
 using TimedDespawnComponent = Robust.Shared.Spawners.TimedDespawnComponent;
 
@@ -76,6 +79,7 @@ public sealed partial class GunSystem : SharedGunSystem
     [Dependency] private readonly SharedMapSystem _maps = default!;
     [Dependency] private readonly SharedTransformSystem _xform = default!;
     [Dependency] private readonly SpriteSystem _sprite = default!;
+    [Dependency] private readonly CameraRecoilSystem _cameraRecoil = default!; //suzi-station 
 
     public static readonly EntProtoId HitscanProto = "HitscanEffect";
 
@@ -324,7 +328,20 @@ public sealed partial class GunSystem : SharedGunSystem
         if (!Timing.IsFirstTimePredicted || user == null || recoil == Vector2.Zero || recoilScalar == 0)
             return;
 
-        _recoil.KickCamera(user.Value, recoil.Normalized() * 0.5f * recoilScalar);
+        _recoil.KickCamera(user.Value, recoil.Normalized() * 0.2f * recoilScalar); //suzi-station edit
+        //suzi-station: start edit
+        var shotAngle = recoil.ToAngle();
+        float kickIntensity = 0.09f;
+
+        double kickValue = (double) kickIntensity * (double) recoilScalar;
+        bool shootingRight = recoil.X < 0;
+
+        if (!shootingRight) 
+            kickValue *= -1;
+
+        var cameraKickAngle = new Angle(kickValue);
+        _cameraRecoil.KickCamera(user.Value, cameraKickAngle);
+        //suzi-station end edit
     }
 
     protected override void Popup(string message, EntityUid? uid, EntityUid? user)

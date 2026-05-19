@@ -27,5 +27,5 @@ public sealed class ADTCCVars
         CVarDef.Create("barks.replace_tts", true, CVar.CLIENTONLY | CVar.ARCHIVE);
 
     public static readonly CVarDef<float> BarksVolume =
-        CVarDef.Create("barks.volume", 1f, CVar.CLIENTONLY | CVar.ARCHIVE);
+        CVarDef.Create("barks.volume", 1.7f, CVar.CLIENTONLY | CVar.ARCHIVE);
 }

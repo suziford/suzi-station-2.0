@@ -1,0 +1,38 @@
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: ADTClothingUniformDressVintage
+  name: vintage dress
+  description: A beautiful vintage dress for special occasions.
+  components:
+  - type: Sprite
+    sprite: _Suziford/Clothing/Uniforms/Jumpskirt/dress_vintage.rsi
+  - type: Clothing
+    sprite: _Suziford/Clothing/Uniforms/Jumpskirt/dress_vintage.rsi
+  - type: StaticPrice
+    price: 85
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: ADTClothingUniformTangoDressBlack
+  name: black tango dress
+  description: An elegant black tango dress for passionate dances.
+  components:
+  - type: Sprite
+    sprite: _Suziford/Clothing/Uniforms/Jumpskirt/tango_dress_black.rsi
+  - type: Clothing
+    sprite: _Suziford/Clothing/Uniforms/Jumpskirt/tango_dress_black.rsi
+  - type: StaticPrice
+    price: 85
+
+- type: entity
+  parent: ClothingUniformSkirtBase
+  id: ADTClothingUniformTangoDressWhite
+  name: white tango dress
+  description: A graceful white tango dress for elegant performances.
+  components:
+  - type: Sprite
+    sprite: _Suziford/Clothing/Uniforms/Jumpskirt/tango_dress_white.rsi
+  - type: Clothing
+    sprite: _Suziford/Clothing/Uniforms/Jumpskirt/tango_dress_white.rsi
+  - type: StaticPrice
+    price: 85
