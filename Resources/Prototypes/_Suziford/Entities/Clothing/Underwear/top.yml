@@ -1,5 +1,5 @@
 - type: entity
-  parent: ClothingBraBase
+  parent: ADTClothingUnderwearTopBase
   id: ADTClothingUnderwearTopBraCow
   name: cow bra
   description: Cute cow-themed bra. Moo!

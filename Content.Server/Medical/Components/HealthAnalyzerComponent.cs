@@ -56,7 +56,7 @@ public sealed partial class HealthAnalyzerComponent : Component
     /// How long it takes to scan someone.
     /// </summary>
     [DataField]
-    public TimeSpan ScanDelay = TimeSpan.FromSeconds(0.8);
+    public TimeSpan ScanDelay = TimeSpan.FromSeconds(1.3);
 
     /// <summary>
     /// Which entity has been scanned, for continuous updates
@@ -80,13 +80,13 @@ public sealed partial class HealthAnalyzerComponent : Component
     /// Sound played on scanning begin
     /// </summary>
     [DataField]
-    public SoundSpecifier? ScanningBeginSound;
+    public SoundSpecifier? ScanningBeginSound = new SoundPathSpecifier("/Audio/_Suziford/Items/Medical/scanstart.ogg");
 
     /// <summary>
     /// Sound played on scanning end
     /// </summary>
     [DataField]
-    public SoundSpecifier ScanningEndSound = new SoundPathSpecifier("/Audio/Items/Medical/healthscanner.ogg");
+    public SoundSpecifier ScanningEndSound = new SoundPathSpecifier("/Audio/_Suziford/Items/Medical/scanend.ogg");
 
     /// <summary>
     /// Whether to show up the popup

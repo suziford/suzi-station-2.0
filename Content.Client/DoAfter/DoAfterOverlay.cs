@@ -49,6 +49,7 @@ public sealed class DoAfterOverlay : Overlay
     private readonly SpriteSystem _sprite;
 
     private readonly Texture _barTexture;
+    private readonly SpriteSpecifier _cogTexture; // suzi-station
     private readonly ShaderInstance _unshadedShader;
 
     /// <summary>
@@ -74,6 +75,7 @@ public sealed class DoAfterOverlay : Overlay
         _sprite = _entManager.System<SpriteSystem>();
         var sprite = new SpriteSpecifier.Rsi(new("/Textures/Interface/Misc/progress_bar.rsi"), "icon");
         _barTexture = _entManager.EntitySysManager.GetEntitySystem<SpriteSystem>().Frame0(sprite);
+        _cogTexture = new SpriteSpecifier.Rsi(new("/Textures/_Suziford/Interface/Misc/progress_cog.rsi"), "cog"); // suzi-station
 
         _unshadedShader = protoManager.Index(UnshadedShader).Instance();
     }

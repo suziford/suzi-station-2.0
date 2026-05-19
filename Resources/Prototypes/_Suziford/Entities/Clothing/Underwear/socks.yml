@@ -1,5 +1,5 @@
 - type: entity
-  parent: ClothingSocksBase
+  parent: ADTClothingUnderwearSocksBase
   id: ADTClothingUnderwearSocksCow
   name: cow socks
   description: Cute cow-themed socks. Moo!

@@ -1,5 +1,5 @@
 - type: entity
-  parent: ClothingUnderwearBase
+  parent: ADTClothingUnderwearBottomBase
   id: ADTClothingUnderwearBottomPantiesCow
   name: cow panties
   description: Cute cow-themed panties. Moo!

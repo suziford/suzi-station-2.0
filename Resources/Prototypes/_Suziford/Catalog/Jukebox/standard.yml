@@ -1,8 +1,3 @@
-- type: jukebox
-  id: beyondthesea
-  name: Beyond The Sea
-  path:
-    path: /Audio/_Suziford/Jukebox/beyondthesea.ogg
 
 - type: jukebox
   id: fortunateMusic
@@ -35,22 +30,10 @@
     path: /Audio/_Suziford/Jukebox/degeneracy.ogg
 
 - type: jukebox
-  id: hullrotCombatMusic1
-  name: Hullrot Combat 1
-  path:
-    path: /Audio/_Suziford/Jukebox/GS_3.ogg
-
-- type: jukebox
   id: CountdownEFT
   name: Countdown - Geneburn
   path:
     path: /Audio/_Suziford/Jukebox/Countdown.ogg
-
-- type: jukebox
-  id: hullrotCombatMusic3
-  name: Hullrot Combat 3
-  path:
-    path: /Audio/_Suziford/Jukebox/GS_2.ogg
 
 - type: jukebox
   id: balreskaHullrot
@@ -59,34 +42,16 @@
     path: /Audio/_Suziford/Jukebox/balreska_1.ogg
 
 - type: jukebox
-  id: BichYaBarat
-  name: Бич я Борат
-  path:
-    path: /Audio/_Suziford/Jukebox/BichYaBarat.ogg
-
-- type: jukebox
   id: bhopMusic
   name: bhop
   path:
     path: /Audio/_Suziford/Jukebox/bhop.ogg
 
 - type: jukebox
-  id: chinaRep
-  name: Китайский рэп
-  path:
-    path: /Audio/_Suziford/Jukebox/chinaRep.ogg
-
-- type: jukebox
   id: looseCannon
   name: Loose Cannon
   path:
     path: /Audio/_Suziford/Jukebox/LooseCannon.ogg
-
-- type: jukebox
-  id: BritanskiMarshal
-  name: БРИТАНСКИЙ МАРШАЛ
-  path:
-    path: /Audio/_Suziford/Jukebox/MARSHAL.ogg
 
 - type: jukebox
   id: mexicanSongLol
@@ -119,12 +84,6 @@
     path: /Audio/_Suziford/Jukebox/TobuCandyland.ogg
 
 - type: jukebox
-  id: TomTomMusic
-  name: TomTom
-  path:
-    path: /Audio/_Suziford/Jukebox/TomTom.ogg
-
-- type: jukebox
   id: WaitC418
   name: Wait - C418
   path:
@@ -135,12 +94,6 @@
   name: I Want Things to Be Beautiful - Devi McCallion 
   path:
     path: /Audio/_Suziford/Jukebox/IWantThingstoBeBeautiful.ogg
-
-- type: jukebox
-  id: NotionJukebox
-  name: Notion - The Rare Occasions
-  path:
-    path: /Audio/_Suziford/Jukebox/Notion.ogg
 
 - type: jukebox
   id: JustTwoOfUs
@@ -267,6 +220,18 @@
   name: TobyFox - Black Knife
   path:
     path: /Audio/_Suziford/Jukebox/BlackKnife.ogg
+
+- type: jukebox
+  id: NocturneJukebox
+  name: Bill Kiley - Nocturne
+  path:
+    path: /Audio/_Suziford/Jukebox/Nocturne.ogg
+
+- type: jukebox
+  id: NoTimeforCautionJukebox
+  name: Hans Zimmer - No Time for Caution
+  path:
+    path: /Audio/_Suziford/Jukebox/NoTimeforCaution.ogg
 
 #- type: jukebox
 #  id: 
