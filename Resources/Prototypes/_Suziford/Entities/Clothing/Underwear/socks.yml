@@ -1,8 +1,0 @@
-- type: entity
-  parent: ADTClothingUnderwearSocksBase
-  id: ADTClothingUnderwearSocksCow
-  name: cow socks
-  description: Cute cow-themed socks. Moo!
-  components:
-  - type: Sprite
-    sprite: _Suziford/Clothing/Underwear/Socks/socks_cow.rsi
