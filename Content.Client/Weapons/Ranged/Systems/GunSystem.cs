@@ -328,21 +328,20 @@ public sealed partial class GunSystem : SharedGunSystem
         if (!Timing.IsFirstTimePredicted || user == null || recoil == Vector2.Zero || recoilScalar == 0)
             return;
 
-        _recoil.KickCamera(user.Value, recoil.Normalized() * 0.5f * recoilScalar);
-        //suzi-station: start
-        float kickIntensity = 0.10f;
+        _recoil.KickCamera(user.Value, recoil.Normalized() * 0.2f * recoilScalar); //suzi-station edit
+        //suzi-station: start edit
+        var shotAngle = recoil.ToAngle();
+        float kickIntensity = 0.09f;
 
-        // Используем .Theta и новый конструктор Angle
-        var manualLength = Math.Sqrt((double)(recoil.X * recoil.X + recoil.Y * recoil.Y));
+        double kickValue = (double) kickIntensity * (double) recoilScalar;
+        bool shootingRight = recoil.X < 0;
 
-        var tiltValue = manualLength * (double) kickIntensity * (double) recoilScalar;
+        if (!shootingRight) 
+            kickValue *= -1;
 
-        if (recoil.X > 0)
-            tiltValue *= -1;
-
-        var cameraTilt = new Angle(tiltValue);
-        _cameraRecoil.KickCamera(user.Value, cameraTilt);
-        //suzi-station end
+        var cameraKickAngle = new Angle(kickValue);
+        _cameraRecoil.KickCamera(user.Value, cameraKickAngle);
+        //suzi-station end edit
     }
 
     protected override void Popup(string message, EntityUid? uid, EntityUid? user)
