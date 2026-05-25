@@ -10,6 +10,7 @@ using Robust.Client.Animations;
 using Robust.Client.GameObjects;
 using Robust.Shared.Animations;
 using Robust.Shared.Map;
+using Robust.Shared.Maths;
 using Robust.Shared.Spawners;
 using static Robust.Client.Animations.AnimationTrackProperty;
 
@@ -36,6 +37,15 @@ public sealed class EntityPickupAnimationSystem : EntitySystem
     {
         Del(uid);
     }
+
+    // suzi-station start: edit
+    // easeInCubic: f(t) = t^3, sampled at t = 0, 0.25, 0.5, 0.75, 1.0
+    private static readonly float[] PickupEaseInFactors = { 0f, 0.015625f, 0.125f, 0.421875f, 1f };
+
+    private const float PickupAnimDuration = 0.25f;
+    private const float PickupKeyStep = 0.0625f; // PickupAnimDuration / 4 keyframe intervals
+    private const float PickupTiltDegrees = 25f;
+    // suzi-station end: edit
 
     /// <summary>
     ///     Animates a clone of an entity moving from one point to another before
@@ -70,25 +80,68 @@ public sealed class EntityPickupAnimationSystem : EntitySystem
         var animations = Comp<AnimationPlayerComponent>(animatableClone);
 
         var despawn = EnsureComp<TimedDespawnComponent>(animatableClone);
-        despawn.Lifetime = 0.25f;
+        despawn.Lifetime = PickupAnimDuration + 0.05f; // suzi-station edit
         _transform.SetLocalRotationNoLerp(animatableClone, initialAngle);
+
+        // suzi-station start: edit
+        // Pre-compute easeInCubic position keyframes (piecewise linear approximation of t^3)
+        var startPos = initial.Position;
+        var posKeyFrames = new KeyFrame[PickupEaseInFactors.Length];
+        for (var i = 0; i < PickupEaseInFactors.Length; i++)
+            posKeyFrames[i] = new KeyFrame(Vector2.Lerp(startPos, final, PickupEaseInFactors[i]), i == 0 ? 0f : PickupKeyStep);
+
+        // Determine tilt direction based on movement direction toward the hand.
+        var moveDir = final - startPos;
+        float tiltRad;
+        if (MathF.Abs(moveDir.X) >= MathF.Abs(moveDir.Y))
+            tiltRad = moveDir.X >= 0 ? -(PickupTiltDegrees * MathF.PI / 180f) : (PickupTiltDegrees * MathF.PI / 180f);
+        else
+            tiltRad = moveDir.Y >= 0 ? (PickupTiltDegrees * MathF.PI / 180f) : -(PickupTiltDegrees * MathF.PI / 180f);
+        var tiltDelta = new Angle(tiltRad);
+
+        // Clone tilts from its initial angle toward the destination as it's picked up.
+        var rotStart = initialAngle;
+        var rotEnd = initialAngle + tiltDelta;
+        var rotKeyFrames = new KeyFrame[PickupEaseInFactors.Length];
+        for (var i = 0; i < PickupEaseInFactors.Length; i++)
+        {
+            var angle = new Angle(rotStart.Theta + (rotEnd.Theta - rotStart.Theta) * PickupEaseInFactors[i]);
+            rotKeyFrames[i] = new KeyFrame(angle, i == 0 ? 0f : PickupKeyStep);
+        }
+        // suzi-station end: edit
 
         _animations.Play(new Entity<AnimationPlayerComponent>(animatableClone, animations), new Animation
         {
-            Length = TimeSpan.FromMilliseconds(125),
+            Length = TimeSpan.FromSeconds(PickupAnimDuration), // suzi-station edit
             AnimationTracks =
             {
+                // suzi-station start: edit
                 new AnimationTrackComponentProperty
                 {
                     ComponentType = typeof(TransformComponent),
                     Property = nameof(TransformComponent.LocalPosition),
                     InterpolationMode = AnimationInterpolationMode.Linear,
+                    KeyFrames = new System.Collections.Generic.List<KeyFrame>(posKeyFrames),
+                },
+                new AnimationTrackComponentProperty
+                {
+                    ComponentType = typeof(SpriteComponent),
+                    Property = nameof(SpriteComponent.Color),
+                    InterpolationMode = AnimationInterpolationMode.Linear,
                     KeyFrames =
                     {
-                        new KeyFrame(initial.Position, 0),
-                        new KeyFrame(final, 0.125f)
-                    }
+                        new KeyFrame(Color.White, 0f),
+                        new KeyFrame(new Color(1f, 1f, 1f, 0.3f), PickupAnimDuration),
+                    },
                 },
+                new AnimationTrackComponentProperty
+                {
+                    ComponentType = typeof(TransformComponent),
+                    Property = nameof(TransformComponent.LocalRotation),
+                    InterpolationMode = AnimationInterpolationMode.Linear,
+                    KeyFrames = new System.Collections.Generic.List<KeyFrame>(rotKeyFrames),
+                },
+                // suzi-station end: edit
             }
         }, "fancy_pickup_anim");
     }

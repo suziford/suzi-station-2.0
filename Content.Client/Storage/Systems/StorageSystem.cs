@@ -18,7 +18,9 @@
 
 using System.Linq;
 using System.Numerics;
+using Content.Client._Suziford.Animations;
 using Content.Client.Animations;
+using Content.Shared._Suziford.Hands;
 using Content.Shared.Hands;
 using Content.Shared.Storage;
 using Content.Shared.Storage.EntitySystems;
@@ -34,6 +36,7 @@ public sealed class StorageSystem : SharedStorageSystem
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly IPlayerManager _player = default!;
     [Dependency] private readonly EntityPickupAnimationSystem _entityPickupAnimation = default!;
+    [Dependency] private readonly EntityDropAnimationSystem _entityDropAnimation = default!; // suzi-station add
 
     private Dictionary<EntityUid, ItemStorageLocation> _oldStoredItems = new();
 
@@ -45,6 +48,7 @@ public sealed class StorageSystem : SharedStorageSystem
 
         SubscribeLocalEvent<StorageComponent, ComponentHandleState>(OnStorageHandleState);
         SubscribeNetworkEvent<PickupAnimationEvent>(HandlePickupAnimation);
+        SubscribeNetworkEvent<DropAnimationEvent>(HandleDropAnimation); // suzi-station add
         SubscribeAllEvent<AnimateInsertingEntitiesEvent>(HandleAnimatingInsertingEntities);
     }
 
@@ -114,6 +118,55 @@ public sealed class StorageSystem : SharedStorageSystem
             _queuedBuis.Add((storageBui, false));
         }
     }
+
+    // suzi-station start: add
+    private void HandleDropAnimation(DropAnimationEvent msg)
+    {
+        // Call AnimateEntityDrop directly (no IsFirstTimePredicted guard) so server events
+        // reach non-predicting clients. Mirrors how HandlePickupAnimation works.
+        // Double-animation for predicting clients is prevented by the ContainsKey cooldown
+        // inside AnimateEntityDrop itself.
+        var item = GetEntity(msg.ItemUid);
+        var initialCoords = GetCoordinates(msg.InitialPosition);
+        var finalCoords = GetCoordinates(msg.FinalPosition);
+
+        if (!Exists(initialCoords.EntityId) || !Exists(finalCoords.EntityId))
+            return;
+
+        if (TransformSystem.InRange(finalCoords, initialCoords, 0.1f))
+            return;
+
+        var finalMapPos = TransformSystem.ToMapCoordinates(finalCoords).Position;
+        var finalPos = Vector2.Transform(finalMapPos, TransformSystem.GetInvWorldMatrix(initialCoords.EntityId));
+        _entityDropAnimation.AnimateEntityDrop(item, initialCoords, finalPos, msg.InitialAngle);
+    }
+
+    public override void PlayDropAnimation(EntityUid uid, EntityCoordinates initialCoordinates, EntityCoordinates finalCoordinates,
+        Angle initialRotation, EntityUid? user = null)
+    {
+        if (!_timing.IsFirstTimePredicted)
+            return;
+
+        DropAnimation(uid, initialCoordinates, finalCoordinates, initialRotation);
+    }
+
+    public void DropAnimation(EntityUid item, EntityCoordinates initialCoords, EntityCoordinates finalCoords, Angle initialAngle)
+    {
+        if (!_timing.IsFirstTimePredicted)
+            return;
+
+        if (TransformSystem.InRange(finalCoords, initialCoords, 0.1f) ||
+            !Exists(initialCoords.EntityId) || !Exists(finalCoords.EntityId))
+        {
+            return;
+        }
+
+        var finalMapPos = TransformSystem.ToMapCoordinates(finalCoords).Position;
+        var finalPos = Vector2.Transform(finalMapPos, TransformSystem.GetInvWorldMatrix(initialCoords.EntityId));
+
+        _entityDropAnimation.AnimateEntityDrop(item, initialCoords, finalPos, initialAngle);
+    }
+    // suzi-station end: add
 
     protected override void ShowStorageWindow(EntityUid uid, EntityUid actor)
     {

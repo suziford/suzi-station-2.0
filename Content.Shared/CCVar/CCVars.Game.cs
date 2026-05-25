@@ -24,7 +24,7 @@ public sealed partial class CCVars
     ///     Controls if the lobby is enabled. If it is not, and there are no available jobs, you may get stuck on a black screen.
     /// </summary>
     public static readonly CVarDef<bool>
-        GameLobbyEnabled = CVarDef.Create("game.lobbyenabled", true, CVar.ARCHIVE);
+        GameLobbyEnabled = CVarDef.Create("game.lobbyenabled", false, CVar.ARCHIVE);
 
     /// <summary>
     ///     Controls the duration of the lobby timer in seconds. Defaults to 2 minutes and 30 seconds.

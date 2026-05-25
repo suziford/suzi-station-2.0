@@ -44,11 +44,13 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using Content.Shared._Suziford.Hands;
 using Content.Shared.Explosion;
 using Content.Shared.Hands;
 using Content.Shared.Storage;
 using Content.Shared.Storage.Components;
 using Content.Shared.Storage.EntitySystems;
+using Robust.Shared.Containers;
 using Robust.Shared.Map;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
@@ -58,6 +60,9 @@ namespace Content.Server.Storage.EntitySystems;
 public sealed partial class StorageSystem : SharedStorageSystem
 {
     [Dependency] private readonly IPrototypeManager _prototype = default!;
+    // suzi-station start: add
+    [Dependency] private readonly SharedContainerSystem _containersServer = default!;
+    // suzi-station end: add
 
     public override void Initialize()
     {
@@ -79,4 +84,20 @@ public sealed partial class StorageSystem : SharedStorageSystem
         var filter = Filter.Pvs(uid).RemoveWhereAttachedEntity(e => e == user);
         RaiseNetworkEvent(new PickupAnimationEvent(GetNetEntity(uid), GetNetCoordinates(initialCoordinates), GetNetCoordinates(finalCoordinates), initialRotation), filter);
     }
+
+    // suzi-station start: add
+    /// <inheritdoc />
+    public override void PlayDropAnimation(EntityUid uid, EntityCoordinates initialCoordinates, EntityCoordinates finalCoordinates,
+        Angle initialRotation, EntityUid? user = null)
+    {
+        // When the item is already inside a container (e.g. inserted into table storage),
+        // Filter.Pvs(uid) returns an empty set because the stored item is hidden from PVS.
+        // Use the container owner so the event reaches all clients who can see the table.
+        var pvsSource = _containersServer.TryGetContainingContainer(uid, out var container)
+            ? container.Owner
+            : uid;
+        var filter = Filter.Pvs(pvsSource).RemoveWhereAttachedEntity(e => e == user);
+        RaiseNetworkEvent(new DropAnimationEvent(GetNetEntity(uid), GetNetCoordinates(initialCoordinates), GetNetCoordinates(finalCoordinates), initialRotation), filter);
+    }
+    // suzi-station end: add
 }
