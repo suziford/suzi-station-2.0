@@ -86,11 +86,16 @@ public sealed class PlaceableSurfaceSystem : EntitySystem
         if (HasComp<DumpableComponent>(args.Used))
             return;
 
-        if (!_handsSystem.TryDrop(args.User, args.Used))
+        // suzi-station start: edit
+        // Pass clickLocation so TryDrop fires the drop animation with the correct destination.
+        // Without this, TryDrop animated to the player's feet, then SetCoordinates teleported
+        // the item to the table — producing an animation with the wrong end position.
+        if (!_handsSystem.TryDrop(args.User, args.Used, args.ClickLocation))
             return;
 
         _transformSystem.SetCoordinates(args.Used,
             surface.PlaceCentered ? Transform(uid).Coordinates.Offset(surface.PositionOffset) : args.ClickLocation);
+        // suzi-station end: edit
 
         args.Handled = true;
     }

@@ -18,7 +18,9 @@
 
 using System.Linq;
 using System.Numerics;
+using Content.Client._Suziford.Animations;
 using Content.Client.Animations;
+using Content.Shared._Suziford.Hands;
 using Content.Shared.Hands;
 using Content.Shared.Storage;
 using Content.Shared.Storage.EntitySystems;
@@ -34,8 +36,20 @@ public sealed class StorageSystem : SharedStorageSystem
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly IPlayerManager _player = default!;
     [Dependency] private readonly EntityPickupAnimationSystem _entityPickupAnimation = default!;
+    [Dependency] private readonly EntityDropAnimationSystem _entityDropAnimation = default!; // suzi-station add
 
     private Dictionary<EntityUid, ItemStorageLocation> _oldStoredItems = new();
+
+    // suzi-station start: add
+    // Track storages whose state we have already seen at least once.
+    // On the FIRST ComponentHandleState call _oldStoredItems is always empty,
+    // so every item in the storage looks "newly inserted" — causing spurious
+    // drop animations for all pre-existing contents (e.g. belt on spawn,
+    // picking up a backpack from the floor).
+    // Cleared in Shutdown() so stale UIDs never carry over to a new session.
+    private readonly HashSet<EntityUid> _seenStorages = new();
+
+    // suzi-station end: add
 
     private List<(StorageBoundUserInterface Bui, bool Value)> _queuedBuis = new();
 
@@ -45,6 +59,7 @@ public sealed class StorageSystem : SharedStorageSystem
 
         SubscribeLocalEvent<StorageComponent, ComponentHandleState>(OnStorageHandleState);
         SubscribeNetworkEvent<PickupAnimationEvent>(HandlePickupAnimation);
+        SubscribeAllEvent<DropAnimationEvent>(HandleDropAnimation); // suzi-station add
         SubscribeAllEvent<AnimateInsertingEntitiesEvent>(HandleAnimatingInsertingEntities);
     }
 
@@ -83,6 +98,52 @@ public sealed class StorageSystem : SharedStorageSystem
 
         UpdateOccupied((uid, component));
 
+        // suzi-station start: add
+        // Animate items that just appeared in this storage and originated from the local player.
+        // This state-based trigger is the reliable fallback: it fires regardless of whether
+        // client prediction of the insertion ran, bypassing all IsFirstTimePredicted / PVS issues.
+        //
+        // Guard: skip animation on the FIRST state reception for this storage.
+        // At that point _oldStoredItems is always empty, so every item in the
+        // storage would look "newly inserted" and receive a spurious drop animation
+        // (e.g. all belt contents on spawn, all backpack contents when picked up).
+        // _seenStorages is cleared in Shutdown() so it never carries stale UIDs
+        // into a new session (which would make isFirstSeen incorrectly false).
+        var isFirstSeen = _seenStorages.Add(uid);
+
+        if (!isFirstSeen)
+        {
+            var localPlayer = _player.LocalEntity;
+            if (localPlayer != null && Exists(localPlayer.Value))
+            {
+                var storageCoords = Transform(uid).Coordinates;
+                var playerCoords = Transform(localPlayer.Value).Coordinates;
+
+                if (Exists(playerCoords.EntityId) && Exists(storageCoords.EntityId) &&
+                    !TransformSystem.InRange(storageCoords, playerCoords, 0.1f) &&
+                    TransformSystem.InRange(storageCoords, playerCoords, 3.0f))
+                {
+                    var finalMapPos = TransformSystem.ToMapCoordinates(storageCoords).Position;
+                    var finalPos = Vector2.Transform(finalMapPos, TransformSystem.GetInvWorldMatrix(playerCoords.EntityId));
+
+                    foreach (var (ent, _) in component.StoredItems)
+                    {
+                        if (_oldStoredItems.ContainsKey(ent) || !Exists(ent))
+                            continue;
+
+                        // Skip items currently being picked up (pickup animation running).
+                        // The server sends one tick of intermediate state before processing
+                        // the pickup command, making the item look "newly inserted".
+                        if (_entityPickupAnimation.IsPickingUp(ent))
+                            continue;
+
+                        _entityDropAnimation.AnimateEntityDrop(ent, playerCoords, finalPos, Transform(ent).LocalRotation);
+                    }
+                }
+            }
+        }
+        // suzi-station end: add
+
         var uiDirty = !component.StoredItems.SequenceEqual(_oldStoredItems);
 
         if (uiDirty && UI.TryGetOpenUi<StorageBoundUserInterface>(uid, StorageComponent.StorageUiKey.Key, out var storageBui))
@@ -107,6 +168,14 @@ public sealed class StorageSystem : SharedStorageSystem
         }
     }
 
+    // suzi-station start: add
+    public override void Shutdown()
+    {
+        base.Shutdown();
+        _seenStorages.Clear();
+    }
+    // suzi-station end: add
+
     protected override void HideStorageWindow(EntityUid uid, EntityUid actor)
     {
         if (UI.TryGetOpenUi<StorageBoundUserInterface>(uid, StorageComponent.StorageUiKey.Key, out var storageBui))
@@ -114,6 +183,55 @@ public sealed class StorageSystem : SharedStorageSystem
             _queuedBuis.Add((storageBui, false));
         }
     }
+
+    // suzi-station start: add
+    private void HandleDropAnimation(DropAnimationEvent msg)
+    {
+        // Call AnimateEntityDrop directly (no IsFirstTimePredicted guard) so server events
+        // reach non-predicting clients. Mirrors how HandlePickupAnimation works.
+        // Double-animation for predicting clients is prevented by the ContainsKey cooldown
+        // inside AnimateEntityDrop itself.
+        var item = GetEntity(msg.ItemUid);
+        var initialCoords = GetCoordinates(msg.InitialPosition);
+        var finalCoords = GetCoordinates(msg.FinalPosition);
+
+        if (!Exists(initialCoords.EntityId) || !Exists(finalCoords.EntityId))
+            return;
+
+        if (TransformSystem.InRange(finalCoords, initialCoords, 0.1f))
+            return;
+
+        var finalMapPos = TransformSystem.ToMapCoordinates(finalCoords).Position;
+        var finalPos = Vector2.Transform(finalMapPos, TransformSystem.GetInvWorldMatrix(initialCoords.EntityId));
+        _entityDropAnimation.AnimateEntityDrop(item, initialCoords, finalPos, msg.InitialAngle);
+    }
+
+    public override void PlayDropAnimation(EntityUid uid, EntityCoordinates initialCoordinates, EntityCoordinates finalCoordinates,
+        Angle initialRotation, EntityUid? user = null)
+    {
+        if (!_timing.IsFirstTimePredicted)
+            return;
+
+        DropAnimation(uid, initialCoordinates, finalCoordinates, initialRotation);
+    }
+
+    public void DropAnimation(EntityUid item, EntityCoordinates initialCoords, EntityCoordinates finalCoords, Angle initialAngle)
+    {
+        if (!_timing.IsFirstTimePredicted)
+            return;
+
+        if (TransformSystem.InRange(finalCoords, initialCoords, 0.1f) ||
+            !Exists(initialCoords.EntityId) || !Exists(finalCoords.EntityId))
+        {
+            return;
+        }
+
+        var finalMapPos = TransformSystem.ToMapCoordinates(finalCoords).Position;
+        var finalPos = Vector2.Transform(finalMapPos, TransformSystem.GetInvWorldMatrix(initialCoords.EntityId));
+
+        _entityDropAnimation.AnimateEntityDrop(item, initialCoords, finalPos, initialAngle);
+    }
+    // suzi-station end: add
 
     protected override void ShowStorageWindow(EntityUid uid, EntityUid actor)
     {

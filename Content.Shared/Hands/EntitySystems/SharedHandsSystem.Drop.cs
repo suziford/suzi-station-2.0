@@ -165,19 +165,48 @@ public abstract partial class SharedHandsSystem
             return true;
         }
 
+        // suzi-station start: add
+        // Capture drop animation data before the item leaves the hand
+        var dropInitialCoords = Transform(ent).Coordinates;
+        var dropItemAngle = itemXform.LocalRotation;
+        var dropItemMapPos = TransformSystem.GetMapCoordinates(entity.Value);
+        var dropUserMapPos = TransformSystem.GetMapCoordinates(ent);
+        var shouldAnimateDrop = dropItemMapPos.MapId == dropUserMapPos.MapId
+            && (dropItemMapPos.Position - dropUserMapPos.Position).Length() <= MaxAnimationRange
+            && MetaData(entity.Value).VisibilityMask == MetaData(ent).VisibilityMask;
+        // suzi-station end: add
+
         // drop the item with heavy calculations from their hands and place it at the calculated interaction range position
         // The DoDrop is handle if there's no drop target
         DoDrop(ent, handId, doDropInteraction: doDropInteraction);
 
         // if there's no drop location stop here
         if (targetDropLocation == null)
+        {
+            // suzi-station start: add
+            if (shouldAnimateDrop)
+            {
+                var dropFinalCoords = Transform(entity.Value).Coordinates;
+                _storage.PlayDropAnimation(entity.Value, dropInitialCoords, dropFinalCoords, dropItemAngle, ent);
+            }
+            // suzi-station end: add
             return true;
+        }
 
         // otherwise, also move dropped item and rotate it properly according to grid/map
         var (itemPos, itemRot) = TransformSystem.GetWorldPositionRotation(entity.Value);
         var origin = new MapCoordinates(itemPos, itemXform.MapID);
         var target = TransformSystem.ToMapCoordinates(targetDropLocation.Value);
         TransformSystem.SetWorldPositionRotation(entity.Value, GetFinalDropCoordinates(ent, origin, target, entity.Value), itemRot);
+
+        // suzi-station start: add
+        if (shouldAnimateDrop)
+        {
+            var dropFinalCoords = Transform(entity.Value).Coordinates;
+            _storage.PlayDropAnimation(entity.Value, dropInitialCoords, dropFinalCoords, dropItemAngle, ent);
+        }
+        // suzi-station end: add
+
         return true;
     }
 
@@ -198,8 +227,27 @@ public abstract partial class SharedHandsSystem
         if (!ContainerSystem.CanInsert(entity, targetContainer))
             return false;
 
+        // suzi-station start: add
+        var containerDropInitialCoords = Transform(ent).Coordinates;
+        var containerDropItemAngle = Transform(entity).LocalRotation;
+        var containerDropItemMapPos = TransformSystem.GetMapCoordinates(entity);
+        var containerDropUserMapPos = TransformSystem.GetMapCoordinates(ent);
+        var shouldAnimateContainerDrop = containerDropItemMapPos.MapId == containerDropUserMapPos.MapId
+            && (containerDropItemMapPos.Position - containerDropUserMapPos.Position).Length() <= MaxAnimationRange
+            && MetaData(entity).VisibilityMask == MetaData(ent).VisibilityMask;
+        // suzi-station end: add
+
         DoDrop(ent, hand, false);
         ContainerSystem.Insert(entity, targetContainer);
+
+        // suzi-station start: add
+        if (shouldAnimateContainerDrop)
+        {
+            var containerDropFinalCoords = Transform(targetContainer.Owner).Coordinates;
+            _storage.PlayDropAnimation(entity, containerDropInitialCoords, containerDropFinalCoords, containerDropItemAngle, ent);
+        }
+        // suzi-station end: add
+
         return true;
     }
 

@@ -1325,7 +1325,21 @@ public abstract class SharedStorageSystem : EntitySystem
             return false;
         }
 
-        return PlayerInsertEntityInWorld((ent, ent.Comp), player, toInsert.Value);
+        // suzi-station start: add
+        // Capture animation data before the item leaves the hand.
+        var dropInitialCoords = Transform(player.Owner).Coordinates;
+        var dropItemAngle = Transform(toInsert.Value).LocalRotation;
+        // suzi-station end: add
+
+        if (!PlayerInsertEntityInWorld((ent, ent.Comp), player, toInsert.Value))
+            return false;
+
+        // suzi-station start: add
+        var dropFinalCoords = Transform(ent.Owner).Coordinates;
+        PlayDropAnimation(toInsert.Value, dropInitialCoords, dropFinalCoords, dropItemAngle, player.Owner);
+        // suzi-station end: add
+
+        return true;
     }
 
     /// <summary>
@@ -1983,6 +1997,15 @@ public abstract class SharedStorageSystem : EntitySystem
     /// </summary>
     public abstract void PlayPickupAnimation(EntityUid uid, EntityCoordinates initialCoordinates,
         EntityCoordinates finalCoordinates, Angle initialRotation, EntityUid? user = null);
+
+    // suzi-station start: add
+    /// <summary>
+    /// Plays a clientside drop animation for the specified uid.
+    /// The clone moves from <paramref name="initialCoordinates"/> (hand) to <paramref name="finalCoordinates"/> (ground).
+    /// </summary>
+    public abstract void PlayDropAnimation(EntityUid uid, EntityCoordinates initialCoordinates,
+        EntityCoordinates finalCoordinates, Angle initialRotation, EntityUid? user = null);
+    // suzi-station end: add
 
     private bool ValidateInput(
         EntitySessionEventArgs args,
