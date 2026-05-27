@@ -40,6 +40,17 @@ public sealed class StorageSystem : SharedStorageSystem
 
     private Dictionary<EntityUid, ItemStorageLocation> _oldStoredItems = new();
 
+    // suzi-station start: add
+    // Track storages whose state we have already seen at least once.
+    // On the FIRST ComponentHandleState call _oldStoredItems is always empty,
+    // so every item in the storage looks "newly inserted" — causing spurious
+    // drop animations for all pre-existing contents (e.g. belt on spawn,
+    // picking up a backpack from the floor).
+    // Cleared in Shutdown() so stale UIDs never carry over to a new session.
+    private readonly HashSet<EntityUid> _seenStorages = new();
+
+    // suzi-station end: add
+
     private List<(StorageBoundUserInterface Bui, bool Value)> _queuedBuis = new();
 
     public override void Initialize()
@@ -48,7 +59,7 @@ public sealed class StorageSystem : SharedStorageSystem
 
         SubscribeLocalEvent<StorageComponent, ComponentHandleState>(OnStorageHandleState);
         SubscribeNetworkEvent<PickupAnimationEvent>(HandlePickupAnimation);
-        SubscribeNetworkEvent<DropAnimationEvent>(HandleDropAnimation); // suzi-station add
+        SubscribeAllEvent<DropAnimationEvent>(HandleDropAnimation); // suzi-station add
         SubscribeAllEvent<AnimateInsertingEntitiesEvent>(HandleAnimatingInsertingEntities);
     }
 
@@ -87,6 +98,52 @@ public sealed class StorageSystem : SharedStorageSystem
 
         UpdateOccupied((uid, component));
 
+        // suzi-station start: add
+        // Animate items that just appeared in this storage and originated from the local player.
+        // This state-based trigger is the reliable fallback: it fires regardless of whether
+        // client prediction of the insertion ran, bypassing all IsFirstTimePredicted / PVS issues.
+        //
+        // Guard: skip animation on the FIRST state reception for this storage.
+        // At that point _oldStoredItems is always empty, so every item in the
+        // storage would look "newly inserted" and receive a spurious drop animation
+        // (e.g. all belt contents on spawn, all backpack contents when picked up).
+        // _seenStorages is cleared in Shutdown() so it never carries stale UIDs
+        // into a new session (which would make isFirstSeen incorrectly false).
+        var isFirstSeen = _seenStorages.Add(uid);
+
+        if (!isFirstSeen)
+        {
+            var localPlayer = _player.LocalEntity;
+            if (localPlayer != null && Exists(localPlayer.Value))
+            {
+                var storageCoords = Transform(uid).Coordinates;
+                var playerCoords = Transform(localPlayer.Value).Coordinates;
+
+                if (Exists(playerCoords.EntityId) && Exists(storageCoords.EntityId) &&
+                    !TransformSystem.InRange(storageCoords, playerCoords, 0.1f) &&
+                    TransformSystem.InRange(storageCoords, playerCoords, 3.0f))
+                {
+                    var finalMapPos = TransformSystem.ToMapCoordinates(storageCoords).Position;
+                    var finalPos = Vector2.Transform(finalMapPos, TransformSystem.GetInvWorldMatrix(playerCoords.EntityId));
+
+                    foreach (var (ent, _) in component.StoredItems)
+                    {
+                        if (_oldStoredItems.ContainsKey(ent) || !Exists(ent))
+                            continue;
+
+                        // Skip items currently being picked up (pickup animation running).
+                        // The server sends one tick of intermediate state before processing
+                        // the pickup command, making the item look "newly inserted".
+                        if (_entityPickupAnimation.IsPickingUp(ent))
+                            continue;
+
+                        _entityDropAnimation.AnimateEntityDrop(ent, playerCoords, finalPos, Transform(ent).LocalRotation);
+                    }
+                }
+            }
+        }
+        // suzi-station end: add
+
         var uiDirty = !component.StoredItems.SequenceEqual(_oldStoredItems);
 
         if (uiDirty && UI.TryGetOpenUi<StorageBoundUserInterface>(uid, StorageComponent.StorageUiKey.Key, out var storageBui))
@@ -110,6 +167,14 @@ public sealed class StorageSystem : SharedStorageSystem
             sBui.Refresh();
         }
     }
+
+    // suzi-station start: add
+    public override void Shutdown()
+    {
+        base.Shutdown();
+        _seenStorages.Clear();
+    }
+    // suzi-station end: add
 
     protected override void HideStorageWindow(EntityUid uid, EntityUid actor)
     {

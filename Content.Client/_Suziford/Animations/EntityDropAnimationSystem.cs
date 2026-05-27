@@ -124,7 +124,12 @@ public sealed class EntityDropAnimationSystem : EntitySystem
 
         // Capture original color before any modifications.
         var origColor = sprite0.Color;
-        var isInContainer = _containers.IsEntityOrParentInContainer(uid);
+
+        // An opaque container (ShowContents = false) already hides the sprite — don't double-hide.
+        // A transparent surface like a table (ShowContents = true) leaves the sprite visible,
+        // so we must hide it ourselves just like a floor/Q-drop.
+        var hiddenByOpaqueContainer = _containers.TryGetContainingContainer(uid, out var itemContainer)
+            && !itemContainer.ShowContents;
 
         // Keep entry in the dict slightly past AnimDuration so a late server event is still
         // suppressed by the ContainsKey check above.
@@ -154,9 +159,10 @@ public sealed class EntityDropAnimationSystem : EntitySystem
         _sprite.CopySprite((uid, sprite0), (animatableClone, sprite));
         _sprite.SetVisible((animatableClone, sprite), true);
 
-        // Only hide the real item for floor drops, AFTER the clone has copied the original color.
-        // Items inside containers (e.g. table storage) are already hidden by the container system.
-        if (!isInContainer)
+        // Hide the real item UNLESS an opaque container already did it.
+        // Floor drop or table (ShowContents=true): hide it so only the clone is visible.
+        // Opaque container (backpack, crate): container already hid it, leave it alone.
+        if (!hiddenByOpaqueContainer)
             sprite0.Color = Color.Transparent;
 
         var despawn = EnsureComp<TimedDespawnComponent>(animatableClone);

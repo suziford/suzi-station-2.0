@@ -1335,11 +1335,8 @@ public abstract class SharedStorageSystem : EntitySystem
             return false;
 
         // suzi-station start: add
-        // Do NOT pass user here: this path may not be client-predicted, so the server must
-        // send DropAnimationEvent to the dropper too. If the client did predict it, the
-        // ContainsKey cooldown in AnimateEntityDrop prevents a second clone.
         var dropFinalCoords = Transform(ent.Owner).Coordinates;
-        PlayDropAnimation(toInsert.Value, dropInitialCoords, dropFinalCoords, dropItemAngle);
+        PlayDropAnimation(toInsert.Value, dropInitialCoords, dropFinalCoords, dropItemAngle, player.Owner);
         // suzi-station end: add
 
         return true;

@@ -12,6 +12,7 @@ using Robust.Shared.Animations;
 using Robust.Shared.Map;
 using Robust.Shared.Maths;
 using Robust.Shared.Spawners;
+using Robust.Shared.Timing;
 using static Robust.Client.Animations.AnimationTrackProperty;
 
 namespace Content.Client.Animations;
@@ -22,9 +23,31 @@ namespace Content.Client.Animations;
 public sealed class EntityPickupAnimationSystem : EntitySystem
 {
     [Dependency] private readonly AnimationPlayerSystem _animations = default!;
+    [Dependency] private readonly IGameTiming _gameTiming = default!; // suzi-station add
     [Dependency] private readonly MetaDataSystem _metaData = default!;
     [Dependency] private readonly SpriteSystem _sprite = default!;
     [Dependency] private readonly TransformSystem _transform = default!;
+
+    // suzi-station start: add
+    // Maps source entity → time the pickup animation started.
+    // Used by StorageSystem to suppress false drop animations when the server sends
+    // an intermediate state (with the item still in storage) one tick before the
+    // pickup command is processed. Entries expire after PickupAnimDuration + margin.
+    private readonly Dictionary<EntityUid, TimeSpan> _activePickups = new();
+
+    /// <summary>Returns true if a pickup animation is currently running for this entity.</summary>
+    public bool IsPickingUp(EntityUid uid)
+    {
+        if (!_activePickups.TryGetValue(uid, out var startTime))
+            return false;
+        if (_gameTiming.CurTime - startTime > TimeSpan.FromSeconds(PickupAnimDuration + 0.3f))
+        {
+            _activePickups.Remove(uid);
+            return false;
+        }
+        return true;
+    }
+    // suzi-station end: add
 
     public override void Initialize()
     {
@@ -39,8 +62,8 @@ public sealed class EntityPickupAnimationSystem : EntitySystem
     }
 
     // suzi-station start: edit
-    // easeInCubic: f(t) = t^3, sampled at t = 0, 0.25, 0.5, 0.75, 1.0
-    private static readonly float[] PickupEaseInFactors = { 0f, 0.015625f, 0.125f, 0.421875f, 1f };
+    // easeOutCubic: f(t) = 1-(1-t)^3, sampled at t = 0, 0.25, 0.5, 0.75, 1.0
+    private static readonly float[] PickupEaseInFactors = { 0f, 0.578125f, 0.875f, 0.984375f, 1f };
 
     private const float PickupAnimDuration = 0.25f;
     private const float PickupKeyStep = 0.0625f; // PickupAnimDuration / 4 keyframe intervals
@@ -61,6 +84,8 @@ public sealed class EntityPickupAnimationSystem : EntitySystem
 
         if (IsPaused(uid, metadata))
             return;
+
+        _activePickups[uid] = _gameTiming.CurTime; // suzi-station add
 
         var animatableClone = Spawn("clientsideclone", initial);
         EnsureComp<EntityPickupAnimationComponent>(animatableClone);
